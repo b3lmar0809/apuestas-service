@@ -1,0 +1,20 @@
+# No enviar basura al contexto de build
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.vscode/
+.idea/
+*.md
+Dockerfile
+.dockerignore
+k8s/
