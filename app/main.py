@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from .auth import requiere_admin, usuario_actual
-from .db import conexion, dict_cursor, esperar_bd, init_schema, sembrar_eventos
+from .db import conexion, dict_cursor, esperar_bd, init_schema, sembrar_eventos, ping
 from .simulacion import simular_partido
 
 SELECCIONES = {"local", "empate", "visita"}
@@ -66,6 +66,26 @@ class ResolverRequest(BaseModel):
 #   - readiness: ¿está listo para recibir tráfico? Debe verificar la BD.
 # Luego configurar livenessProbe/readinessProbe en el Deployment de EKS.
 
+# --- Sondas de salud para Kubernetes (EP3) ---
+# liveness: el proceso está vivo. NO toca la BD: si fallara por la BD,
+#           Kubernetes reiniciaría el pod sin razón. Responde 200 siempre
+#           que el proceso esté en pie.
+@app.get("/livez")
+def livez():
+    return {"status": "alive"}
+
+
+# readiness: ¿puede recibir tráfico AHORA? Verifica la conexión a PostgreSQL.
+#            200 si la BD responde; 503 si no. Si falla, Kubernetes saca el
+#            pod del balanceo (sin reiniciarlo) hasta que la BD vuelva.
+@app.get("/readyz")
+def readyz():
+    if ping():
+        return {"status": "ready", "db": "ok"}
+    raise HTTPException(
+        status_code=503,
+        detail={"status": "not_ready", "db": "unreachable"},
+    )
 
 @app.get("/api/apuestas/eventos")
 def listar_eventos():
